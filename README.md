@@ -11,6 +11,7 @@ The application simulates a crypto-betting platform where users place bets on a 
 * **Backend:** Node.js with Express and TypeScript.
 * **Real-time Communication:** Socket.io for bi-directional event handling (game ticks, bets, cashouts).
 * **Database:** PostgreSQL for persistent storage (users, transactions, game history).
+* **Security:** JWT Authenticity and Integrity.
 * **Caching:** Redis for session management and ephemeral game state.
 * **Frontend:** React with Tailwind CSS.
 
