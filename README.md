@@ -12,13 +12,14 @@ The application simulates a crypto-betting platform where users place bets on a 
 * **Real-time Communication:** Socket.io for bi-directional event handling (game ticks, bets, cashouts).
 * **Database:** PostgreSQL for persistent storage (users, transactions, game history).
 * **Security:** JWT Authenticity and Integrity.
+* **Provability fair** Persistent Game State Management: Implemented a robust startup routine that queries the game_seeds registry. The system enforces strict continuity by checking for existing hash chains before initialization— automatically resuming the previous sequence if data exists, or generating a new SHA-256 chain only if the database is empty. This prevents "chain-hopping" and ensures a verifiable audit trail across server  restarts.
 * **Caching:** Redis for session management and ephemeral game state.
+* **Redunds:** Fail-Safe Refund Mechanism: Implemented a transactional recovery system refundStuckBets to handle server interruptions. The system utilizes explicit row-level locking (SELECT ... FOR UPDATE) to isolate stuck bets, aggregates user balances using BigInt for precision, and executes refunds within an atomic transaction block. This guarantees that in the event of a crash or service restart, no user funds are lost or double-counted.
 * **Frontend:** React with Tailwind CSS.
 
 ## Key Features
 
 * **Atomic Transactions:** Utilizing PostgreSQL transactions to ensure balance integrity and prevent race conditions during high-concurrency betting.
-* **Provably Fair System:** Game outcomes are generated using a SHA-256 hash chain, allowing users to verify the fairness of each round.
 * **Automated Game Loop:** Server-side loop manages game states (Waiting, Running, Crashed) independently of client connections.
 * **Auto-Cashout:** Implementation of server-side auto-cashout logic for automated play.
 
