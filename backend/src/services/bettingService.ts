@@ -215,47 +215,37 @@ export async function processCashout(
         await client.query('BEGIN');
         
         const betDbRes = await client.query(`SELECT * FROM crash_bets WHERE id = $1 FOR UPDATE`, [betIdStr]);
-        if (betDbRes.rows.length === 0) throw new Error("Bet nije nadjen");
+        if (betDbRes.rows.length === 0) throw new Error("Bet not found");
         
         const betDb = betDbRes.rows[0];
         
-        
-        if (parseFloat(betDb.profit) > 0) { 
-            await client.query('ROLLBACK');
-            return;
-        }
+    if (parseFloat(betDb.profit) > 0) { 
+        await client.query('ROLLBACK');
+        return;
+    }
+    const amountBig = BigInt(betDb.bet_amount); 
+    const multScaled = BigInt(Math.floor(currentMult * 100));
+    const totalPayoutBig = (amountBig * multScaled) / 100n;
+    const profitBig = totalPayoutBig - amountBig;
 
-        
-        const amountBig = BigInt(Math.floor(parseFloat(betDb.bet_amount))); 
-        
-        
-        const multScaled = BigInt(Math.floor(currentMult * 100));
-        const totalPayoutBig = (amountBig * multScaled) / 100n;
-        const profitBig = totalPayoutBig - amountBig;
+    const profitStr = fromCents(profitBig); 
 
-        const profitStr = fromCents(profitBig); 
+    await client.query(
+        `UPDATE crash_bets SET profit = $1, cashed_out_at = $2 WHERE id = $3`, 
+        [profitStr, currentMult, betIdStr]
+    );
+    
+    await client.query(
+        `UPDATE players 
+         SET balance = (balance::NUMERIC + $1::NUMERIC)::BIGINT 
+         WHERE playername = $2`, 
+        [totalPayoutBig.toString(), betDb.player_name]
+    );
+    
+    const userRes = await client.query(`SELECT balance FROM players WHERE playername = $1`, [betDb.player_name]);
+    const newBalBig = BigInt(userRes.rows[0].balance);
 
-        
-        await client.query(
-            `UPDATE crash_bets SET profit = $1, cashed_out_at = $2 WHERE id = $3`, 
-            [profitStr, currentMult, betIdStr]
-        );
-        
-        
-        await client.query(
-            `UPDATE players 
-             SET balance = (balance::NUMERIC + $1::NUMERIC)::BIGINT 
-             WHERE playername = $2`, 
-            [totalPayoutBig.toString(), betDb.player_name]
-        );
-        
-        const userRes = await client.query(`SELECT balance FROM players WHERE playername = $1`, [betDb.player_name]);
-        
-       
-        const newBalNumeric = parseFloat(userRes.rows[0].balance);
-        const newBalBig = BigInt(Math.floor(newBalNumeric));
-
-        await client.query('COMMIT');
+       await client.query('COMMIT');
 
         bet.cashedOut = true;
         
